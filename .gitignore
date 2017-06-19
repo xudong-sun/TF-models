@@ -87,3 +87,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# proto-compiled files
+object_detection/protos/*.py
