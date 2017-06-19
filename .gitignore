@@ -88,5 +88,13 @@ ENV/
 # Rope project settings
 .ropeproject
 
+# tmp files
+*.swp
+*~
+
 # proto-compiled files
 object_detection/protos/*.py
+
+# dataset links, checkpoint links
+object_detection/data/datasets
+object_detection/ckpt
