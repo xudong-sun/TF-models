@@ -21,13 +21,16 @@ from utils import label_map_util
 from utils import visualization_utils as vis_util
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = '/data/ObjectDetection/ssd_mobilenet_v1_coco/frozen_inference_graph.pb'
+PATH_TO_CKPT = 'ckpt/train/wider/frozen_inference_graph.pb'
 
 # List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
+PATH_TO_LABELS = os.path.join('data', 'face_label_map.pbtxt')
 
-NUM_CLASSES = 90
+NUM_CLASSES = 1
 
+# path to test images
+PATH_TO_TEST_IMAGES_DIR = 'test_images'
+TEST_IMAGE_PATHS = ['test1.jpg', '20.jpg', 'test3.jpg']
 
 def load_image_into_numpy_array(image):
     (im_width, im_height) = image.size
@@ -51,13 +54,6 @@ if __name__ == '__main__':
     # category_index is a dict: {id: {id: int, name: str}}, id in [1, NUM_CLASSES]
     category_index = label_map_util.create_category_index(categories)
 
-    # For the sake of simplicity we will use only 2 images:
-    # image1.jpg
-    # image2.jpg
-    # If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
-    PATH_TO_TEST_IMAGES_DIR = 'test_images'
-    TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(i)) for i in range(1, 3) ]
-    
     with detection_graph.as_default():
         with tf.Session(graph=detection_graph) as sess:
             # input/output tensors
@@ -76,6 +72,7 @@ if __name__ == '__main__':
 
             # actual detection
             for image_path in TEST_IMAGE_PATHS:
+                image_path = os.path.join(PATH_TO_TEST_IMAGES_DIR, image_path)
                 image = Image.open(image_path)
                 # the array based representation of the image will be used later in order to prepare the
                 # result image with boxes and labels on it.
@@ -96,7 +93,9 @@ if __name__ == '__main__':
                     np.squeeze(classes).astype(np.int32),
                     np.squeeze(scores),
                     category_index,
-                    use_normalized_coordinates=True)
+                    use_normalized_coordinates=True,
+                    max_boxes_to_draw=None,
+                    min_score_thresh=0.5)
                 plt.imshow(image_np)
                 plt.show()
      
