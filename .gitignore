@@ -98,3 +98,6 @@ object_detection/protos/*.py
 # dataset links, checkpoint links
 object_detection/data/datasets
 object_detection/ckpt
+
+# test images
+object_detection/test_images
