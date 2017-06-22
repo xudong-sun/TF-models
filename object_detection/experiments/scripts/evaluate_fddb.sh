@@ -4,6 +4,8 @@
 # 3. calculate ROC curves
 # experiments/scripts/evaluate_fddb.sh 0 ssd_mobilenet_v1_wider 251616 ssd_mobilenet_v1_fddb.config
 
+set -e
+
 GPU_ID=$1
 FOLDER=$2
 CKPT_STEP=$3
@@ -25,6 +27,7 @@ FDDB_RESULT=$FDDB_WORK_DIR/result-$CKPT_STEP.txt
 python test.py \
  --task_type fddb \
  --ckpt_path $INFERENCE_GRAPH \
+ --conf_thresh 0.2 \
  --fddb_root $FDDB_BASE \
  --fddb_output $FDDB_RESULT
 

@@ -144,7 +144,7 @@ def main(_):
         elif FLAGS.task_type == 'fddb':
             im_list_file = os.path.join(FLAGS.fddb_root, 'FDDB-folds', 'FDDB-fold-{:02d}.txt'.format(FLAGS.fddb_fold))
             from utils import fddb_utils
-            with fddb_utils.FDDB(FLAGS.fddb_output) as fddb:
+            with fddb_utils.FDDB(FLAGS.fddb_output, score_thresh=FLAGS.conf_thresh) as fddb:
                 with open(im_list_file) as f:
                     for line in f:
                         filename_short = line.strip()
