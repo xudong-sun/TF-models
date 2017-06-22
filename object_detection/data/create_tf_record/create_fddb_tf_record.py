@@ -13,12 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-r"""Convert WIDER FACE dataset to TFRecord for object_detection.
+r"""Convert FDDB dataset to TFRecord for object_detection.
 
 Example usage:
-    ./create_wider_tf_record --data_dir=/home/user/WIDERdata \
+    ./create_fddb_tf_record --data_dir=/home/user/FDDB \
         --examples_path=trainval.txt \
-        --output_path=/home/user/wider.record
+        --output_path=/home/user/fddb_without_fold07.tfrecord
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -38,7 +38,7 @@ from object_detection.utils import label_map_util
 
 
 flags = tf.app.flags
-flags.DEFINE_string('data_dir', '', 'Root directory to WIDER FACE dataset.')
+flags.DEFINE_string('data_dir', '', 'Root directory to FDDB dataset.')
 flags.DEFINE_string('annotations_dir', 'Annotations',
                     '(Relative) path to annotations directory.')
 flags.DEFINE_string('image_dir', 'JPEGImages',
@@ -63,7 +63,7 @@ def dict_to_tf_example(data,
   Args:
     data: dict holding PASCAL XML fields for a single image (obtained by
       running dataset_util.recursive_parse_xml_to_dict)
-    dataset_directory: path to root directory holding WIDER FACE dataset
+    dataset_directory: path to root directory holding FDDB dataset
     image_dir: relative path to directory holding images
     ignore_difficult_instances: Whether to skip difficult instances in the
       dataset  (default: False).
@@ -76,7 +76,7 @@ def dict_to_tf_example(data,
   Raises:
     ValueError: if the image pointed to by data['filename'] is not a valid JPEG
   """
-  full_path = os.path.join(dataset_directory, image_dir, data['filename'])
+  full_path = os.path.join(dataset_directory, image_dir, data['filename'].replace('_', '/', 4))
   with tf.gfile.GFile(full_path) as fid:
     encoded_jpg = fid.read()
   encoded_jpg_io = io.BytesIO(encoded_jpg)
@@ -133,7 +133,7 @@ def main(_):
 
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
 
-    logging.info('Reading from WIDER FACE dataset.')
+    logging.info('Reading from FDDB dataset.')
     examples_path = os.path.join(data_dir, FLAGS.examples_path)
     annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
     examples_list = dataset_util.read_examples_list(examples_path)
