@@ -67,6 +67,7 @@ if __name__ == '__main__':
     else:
         targets = defaultdict(int)
     while True:
+        dump_new_cache = False
         for d in list_train_dir():
             latest = latest_checkpoint(d)
             target, save_every = get_target(targets, d)
@@ -79,6 +80,8 @@ if __name__ == '__main__':
                 logger.info('Copied {}'.format(os.path.join(d, 'model.ckpt-{}'.format(latest))))
                 while target < latest: target += save_every
                 targets[d] = target
-        with open(MONITER_CACHE, 'wb') as f: cPickle.dump(targets, f)
+                dump_new_cache = True
+        if dump_new_cache:
+            with open(MONITER_CACHE, 'wb') as f: cPickle.dump(targets, f)
         time.sleep(CHECK_EVERY)
     
