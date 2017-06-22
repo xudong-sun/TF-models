@@ -2,6 +2,13 @@
 # -*- coding: utf-8 -*-
 #
 # testing demo
+#
+# run examples:
+# "draw"
+# python test.py --task_type=draw --ckpt_path=ckpt/train/wider/frozen_inference_graph.pb --test_images_root=test_images \
+#   --test_images=test1.jpg,test3.jpg --labels_path=data/face_label_map.pbtxt
+# "fddb"
+# python test.py --task_type=fddb --ckpt_path=ckpt/train/wider/frozen_inference_graph.pb
 
 import numpy as np
 import os
@@ -15,33 +22,41 @@ from PIL import Image
 
 from utils import label_map_util
 
-# task type
-TASK_TYPE = 'fddb'
-TASK_INFO = 7
+flags = tf.app.flags
 
-# Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = 'ckpt/train/wider/frozen_inference_graph.pb'
+# task
+flags.DEFINE_string('task_type', 'none', 'task type, "none", "draw", "fddb"')
 
-# List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = os.path.join('data', 'face_label_map.pbtxt')
+# checkpoint
+flags.DEFINE_string('ckpt_path', '', 'path to frozen detection graph')
 
-NUM_CLASSES = 1
-CONF_THRESH = 0.5
+# detection
+flags.DEFINE_integer('num_classes', 1, 'number of classes in detection')
+flags.DEFINE_float('conf_thresh', 0.5, 'confidence threshold')
 
-# path to test images, for TASK_TYPE "draw"
-PATH_TO_TEST_IMAGES_DIR = 'test_images'
-TEST_IMAGE_PATHS = ['test1.jpg', 'test3.jpg']
-# path to FDDB root dir, for TASK_TYPE "fddb"
-FDDB_ROOT_DIR = os.path.join('data', 'datasets', 'FDDB')
-FDDB_OUTPUT = 'ckpt/train/wider2/FDDB_result_7.txt'
+# if task_type is "none" or "draw"
+flags.DEFINE_string('test_images_root', '', 'path to test images')
+flags.DEFINE_string('test_images', '', 'test images, separated by comma')
+
+# if task type is "draw"
+flags.DEFINE_string('labels_path', '', 'path to label file')
+
+# if task type is "fddb"
+flags.DEFINE_integer('fddb_fold', 7, 'FDDB fold to test')
+flags.DEFINE_string('fddb_root', 'data/datasets/FDDB', 'FDDB root directory')
+flags.DEFINE_string('fddb_output', 'ckpt/save/fddb_result.txt', 'path to output FDDB result file')
+
+FLAGS = flags.FLAGS
+
+ALL_TASK_TYPE = {'none', 'draw', 'fddb'}
 
 def load_labelmap():
     # Label maps map indices to category names, so that when our convolution network predicts 5, we know that this corresponds to airplane. 
     # Here we use internal utility functions, but anything that returns a dictionary mapping integers to appropriate string labels would be fine
-    label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
-    # categories is a list of dict: {id: int, name: str}, len(categories) == NUM_CLASSES
-    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
-    # category_index is a dict: {id: {id: int, name: str}}, id in [1, NUM_CLASSES]
+    label_map = label_map_util.load_labelmap(FLAGS.labels_path)
+    # categories is a list of dict: {id: int, name: str}, len(categories) == num_classes
+    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=FLAGS.num_classes, use_display_name=True)
+    # category_index is a dict: {id: {id: int, name: str}}, id in [1, num_classes]
     category_index = label_map_util.create_category_index(categories)
     return category_index
 
@@ -74,13 +89,13 @@ class Detection:
                 tf.import_graph_def(od_graph_def, name='')
         return detection_graph
 
-    def im_detect(self, image, verbose=True):
+    def im_detect(self, image, image_path='', verbose=True):
         start_time = time.time()
         (boxes, scores, classes, num_detections) = self._sess.run(
             [self._boxes_tensor, self._scores_tensor, self._classes_tensor, self._num_detections_tensor],
             feed_dict={self._image_tensor: image})
         time_elapsed = time.time() - start_time
-        if verbose: print 'image: {}, time: {:.3f}s'.format(image_path, time_elapsed)
+        if verbose: print '{} time: {:.3f}s'.format(image_path, time_elapsed)
         return boxes, scores, classes, num_detections
 
 def read_image_and_preprocess(image_path):
@@ -101,39 +116,44 @@ def read_image_and_preprocess(image_path):
     return image_np, image_np_expanded
 
 def visualize(image, boxes, scores, classes, category_index):
+    from utils import visualization_utils as vis_util
+    from matplotlib import pyplot as plt
     vis_util.visualize_boxes_and_labels_on_image_array(image, np.squeeze(boxes), np.squeeze(classes).astype(np.int32), np.squeeze(scores), category_index, 
-        use_normalized_coordinates=True, max_boxes_to_draw=None, min_score_thresh=CONF_THRESH)
+        use_normalized_coordinates=True, max_boxes_to_draw=None, min_score_thresh=FLAGS.conf_thresh)
     plt.imshow(image)
     plt.show()
 
-if __name__ == '__main__':
-    if TASK_TYPE == 'draw': category_index = load_labelmap()
+def main(_):
+    assert FLAGS.task_type in ALL_TASK_TYPE, 'Unrecognized task_type: {}'.format(FLAGS.task_type)
     
-    with Detection(PATH_TO_CKPT) as detection:
+    if FLAGS.task_type == 'draw': category_index = load_labelmap()
+    
+    with Detection(FLAGS.ckpt_path) as detection:
         #warmup
         image = np.ones((1, 500, 500, 3), dtype=np.float32) * 128
         detection.im_detect(image, verbose=False)
 
-        if TASK_TYPE in ('none', 'draw'):
-            for image_path in TEST_IMAGE_PATHS:
-                image_path = os.path.join(PATH_TO_TEST_IMAGES_DIR, image_path)
+        if FLAGS.task_type in ('none', 'draw'):
+            for image_path in FLAGS.test_images.split(','):
+                image_path = os.path.join(FLAGS.test_images_root, image_path)
                 image_np, image_np_expanded = read_image_and_preprocess(image_path)
-                boxes, scores, classes, num_detections = detection.im_detect(image_np_expanded)
-                if TASK_TYPE == 'draw': 
-                    from utils import visualization_utils as vis_util
-                    from matplotlib import pyplot as plt
+                boxes, scores, classes, num_detections = detection.im_detect(image_np_expanded, image_path=image_path)
+                if FLAGS.task_type == 'draw': 
                     visualize(image_np, boxes, scores, classes, category_index)
         
-        elif TASK_TYPE == 'fddb':
-            im_list_file = os.path.join(FDDB_ROOT_DIR, 'FDDB-folds', 'FDDB-fold-{:02d}.txt'.format(TASK_INFO))
+        elif FLAGS.task_type == 'fddb':
+            im_list_file = os.path.join(FLAGS.fddb_root, 'FDDB-folds', 'FDDB-fold-{:02d}.txt'.format(FLAGS.fddb_fold))
             from utils import fddb_utils
-            with fddb_utils.FDDB(FDDB_OUTPUT) as fddb:
+            with fddb_utils.FDDB(FLAGS.fddb_output) as fddb:
                 with open(im_list_file) as f:
                     for line in f:
                         filename_short = line.strip()
-                        image_path = os.path.join(FDDB_ROOT_DIR, 'originalPics', filename_short + '.jpg')
+                        image_path = os.path.join(FLAGS.fddb_root, 'originalPics', filename_short + '.jpg')
                         image_np, image_np_expanded = read_image_and_preprocess(image_path)
-                        boxes, scores, classes, num_detections = detection.im_detect(image_np_expanded)
+                        boxes, scores, classes, num_detections = detection.im_detect(image_np_expanded, image_path=image_path)
                         im_height, im_width, _ = image_np.shape
                         fddb.write(filename_short, np.squeeze(boxes), np.squeeze(scores), im_width, im_height)
+
+if __name__ == '__main__':
+    tf.app.run()
 
