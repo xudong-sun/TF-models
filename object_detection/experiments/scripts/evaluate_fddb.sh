@@ -1,6 +1,6 @@
 #!/bin/bash
 FDDB_BASE=data/datasets/FDDB
-FOLDER=wider2
+FOLDER=wider
 RESULT_FILE=FDDB_result_7.txt
 
 $FDDB_BASE/evaluation/evaluate \

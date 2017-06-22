@@ -11,7 +11,6 @@ import tensorflow as tf
 
 from collections import defaultdict
 from io import StringIO
-from matplotlib import pyplot as plt
 from PIL import Image
 
 from utils import label_map_util
@@ -21,7 +20,7 @@ TASK_TYPE = 'fddb'
 TASK_INFO = 7
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = 'ckpt/train/wider2/frozen_inference_graph.pb'
+PATH_TO_CKPT = 'ckpt/train/wider/frozen_inference_graph.pb'
 
 # List of the strings that is used to add correct label for each box.
 PATH_TO_LABELS = os.path.join('data', 'face_label_map.pbtxt')
@@ -115,13 +114,15 @@ if __name__ == '__main__':
         image = np.ones((1, 500, 500, 3), dtype=np.float32) * 128
         detection.im_detect(image, verbose=False)
 
-        if TASK_TYPE == 'draw':
-            from utils import visualization_utils as vis_util
+        if TASK_TYPE in ('none', 'draw'):
             for image_path in TEST_IMAGE_PATHS:
                 image_path = os.path.join(PATH_TO_TEST_IMAGES_DIR, image_path)
                 image_np, image_np_expanded = read_image_and_preprocess(image_path)
                 boxes, scores, classes, num_detections = detection.im_detect(image_np_expanded)
-                visualize(image_np, boxes, scores, classes, category_index)
+                if TASK_TYPE == 'draw': 
+                    from utils import visualization_utils as vis_util
+                    from matplotlib import pyplot as plt
+                    visualize(image_np, boxes, scores, classes, category_index)
         
         elif TASK_TYPE == 'fddb':
             im_list_file = os.path.join(FDDB_ROOT_DIR, 'FDDB-folds', 'FDDB-fold-{:02d}.txt'.format(TASK_INFO))
