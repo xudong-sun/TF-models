@@ -4,13 +4,16 @@
 # utils for writing FDDB txt
 # author: Xudong Sun
 
+import os
 import numpy as np
+from commons import assure_dir
 
 class FDDB:
     def __init__(self, write_target, score_thresh=0.5):
         self._write_target = write_target
         self._score_thresh = score_thresh
     def __enter__(self):
+        assure_dir(os.path.dirname(self._write_target))
         self._file = open(self._write_target, 'w')
         return self
     def __exit__(self, exc_type, exc_value, traceback):
