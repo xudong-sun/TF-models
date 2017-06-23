@@ -27,7 +27,7 @@ FDDB_RESULT=$FDDB_WORK_DIR/result-$CKPT_STEP.txt
 python test.py \
  --task_type fddb \
  --ckpt_path $INFERENCE_GRAPH \
- --conf_thresh 0.2 \
+ --conf_thresh 0.01 \
  --fddb_root $FDDB_BASE \
  --fddb_output $FDDB_RESULT
 
