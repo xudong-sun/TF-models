@@ -4,11 +4,13 @@
 # testing demo
 #
 # run examples:
-# "draw"
-# python test.py --task_type=draw --ckpt_path=ckpt/train/wider/frozen_inference_graph.pb --test_images_root=test_images \
-#   --test_images=test1.jpg,test3.jpg --labels_path=data/face_label_map.pbtxt
+# "draw" or "save"
+# python test.py --task_type draw --ckpt_path ckpt/save/wider/frozen_inference_graph.pb \
+#   --test_images_root test_images --test_images test1.jpg,test3.jpg --labels_path data/face_label_map.pbtxt
+# python test.py --task_type=save --ckpt_path ckpt/save/wider/frozen_inference_graph/pb \
+#   --image_list /data/SOME_IMAGE_LIST.txt --labels_path data/face_label_map.pbtxt
 # "fddb"
-# python test.py --task_type=fddb --ckpt_path=ckpt/train/wider/frozen_inference_graph.pb
+# python test.py --task_type fddb --ckpt_path ckpt/save/wider/frozen_inference_graph.pb
 
 import numpy as np
 import os
@@ -25,7 +27,7 @@ from utils import label_map_util
 flags = tf.app.flags
 
 # task
-flags.DEFINE_string('task_type', 'none', 'task type, "none", "draw", "fddb"')
+flags.DEFINE_string('task_type', 'none', 'task type, "none", "draw", "save", "fddb"')
 
 # checkpoint
 flags.DEFINE_string('ckpt_path', '', 'path to frozen detection graph')
@@ -34,11 +36,15 @@ flags.DEFINE_string('ckpt_path', '', 'path to frozen detection graph')
 flags.DEFINE_integer('num_classes', 1, 'number of classes in detection')
 flags.DEFINE_float('conf_thresh', 0.5, 'confidence threshold')
 
-# if task_type is "none" or "draw"
-flags.DEFINE_string('test_images_root', '', 'path to test images')
+# if task_type is "none", "draw" or "save"
+flags.DEFINE_string('test_images_root', 'test_images', 'path to test images')
 flags.DEFINE_string('test_images', '', 'test images, separated by comma')
+# image_list is an alternative to test_images_root and test_images
+flags.DEFINE_string('image_list', '', 'path to image list, one filename per line')
+# if "save"
+flags.DEFINE_string('save_output', 'output', 'a directory to save the images labeled with detection result')
 
-# if task type is "draw"
+# if task type is "draw" or "save"
 flags.DEFINE_string('labels_path', '', 'path to label file')
 
 # if task type is "fddb"
@@ -48,7 +54,7 @@ flags.DEFINE_string('fddb_output', 'ckpt/save/fddb_result.txt', 'path to output 
 
 FLAGS = flags.FLAGS
 
-ALL_TASK_TYPE = {'none', 'draw', 'fddb'}
+ALL_TASK_TYPE = {'none', 'draw', 'save', 'fddb'}
 
 def load_labelmap():
     # Label maps map indices to category names, so that when our convolution network predicts 5, we know that this corresponds to airplane. 
@@ -115,31 +121,40 @@ def read_image_and_preprocess(image_path):
     image_np_expanded = np.expand_dims(image_np, axis=0)
     return image_np, image_np_expanded
 
-def visualize(image, boxes, scores, classes, category_index):
+def draw_box_on_image(image, boxes, scores, classes, category_index):
     from utils import visualization_utils as vis_util
-    from matplotlib import pyplot as plt
     vis_util.visualize_boxes_and_labels_on_image_array(image, np.squeeze(boxes), np.squeeze(classes).astype(np.int32), np.squeeze(scores), category_index, 
         use_normalized_coordinates=True, max_boxes_to_draw=None, min_score_thresh=FLAGS.conf_thresh)
-    plt.imshow(image)
-    plt.show()
 
 def main(_):
     assert FLAGS.task_type in ALL_TASK_TYPE, 'Unrecognized task_type: {}'.format(FLAGS.task_type)
     
-    if FLAGS.task_type == 'draw': category_index = load_labelmap()
+    if FLAGS.task_type in ('draw', 'save'): category_index = load_labelmap()
     
     with Detection(FLAGS.ckpt_path) as detection:
         #warmup
         image = np.ones((1, 500, 500, 3), dtype=np.float32) * 128
         detection.im_detect(image, verbose=False)
 
-        if FLAGS.task_type in ('none', 'draw'):
-            for image_path in FLAGS.test_images.split(','):
-                image_path = os.path.join(FLAGS.test_images_root, image_path)
+        if FLAGS.task_type in ('none', 'draw', 'save'):
+            if FLAGS.image_list:
+                with open(FLAGS.image_list) as f: all_image_path = [s.strip() for s in f.readlines()]
+            else:
+                all_image_path = [os.path.join(FLAGS.test_images_root, path) for path in FLAGS.test_images.split(',')]
+            for image_path in all_image_path:
                 image_np, image_np_expanded = read_image_and_preprocess(image_path)
                 boxes, scores, classes, num_detections = detection.im_detect(image_np_expanded, image_path=image_path)
-                if FLAGS.task_type == 'draw': 
-                    visualize(image_np, boxes, scores, classes, category_index)
+                if FLAGS.task_type in ('draw', 'save'):
+                    draw_box_on_image(image_np, boxes, scores, classes, category_index)
+                if FLAGS.task_type == 'draw':
+                    from matplotlib import pyplot as plt
+                    plt.imshow(image_np)
+                    plt.show()
+                elif FLAGS.task_type == 'save':
+                    from commons import assure_dir
+                    assure_dir(FLAGS.save_output)
+                    save_to = os.path.join(FLAGS.save_output, os.path.basename(image_path))
+                    Image.fromarray(image_np).save(save_to)
         
         elif FLAGS.task_type == 'fddb':
             im_list_file = os.path.join(FLAGS.fddb_root, 'FDDB-folds', 'FDDB-fold-{:02d}.txt'.format(FLAGS.fddb_fold))
