@@ -17,7 +17,7 @@ import logging
 import time
 import yaml
 from collections import defaultdict
-from commons import assure_dir, get_logger
+from commons import assure_dir, simple_logger
 
 TRAIN_DIR = 'ckpt/train'
 SAVE_DIR = 'ckpt/save'
@@ -27,7 +27,7 @@ WORK_DIR = 'ckpt/monitor'
 PATTERN = r'model_checkpoint_path: "model.ckpt-(\d+)"'
 LATEST_CKPT_PATTERN = re.compile(PATTERN)
 
-logger = get_logger()
+logger = simple_logger()
 
 def read_config():
     config_file = os.path.join(WORK_DIR, 'monitor.pkl')
