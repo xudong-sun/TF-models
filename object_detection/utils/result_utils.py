@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# utils for writing FDDB txt
+# utils for writing datasets result file
 # author: Xudong Sun
 
 import os
 import numpy as np
 from commons import assure_dir
 
-class FDDB:
+class ResultWriter:
     def __init__(self, write_target, score_thresh=0.5):
         self._write_target = write_target
         self._score_thresh = score_thresh

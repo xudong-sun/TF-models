@@ -9,8 +9,9 @@
 #   --test_images_root test_images --test_images test1.jpg,test3.jpg --labels_path data/face_label_map.pbtxt
 # python test.py --task_type=save --ckpt_path ckpt/save/wider/frozen_inference_graph/pb \
 #   --image_list /data/SOME_IMAGE_LIST.txt --labels_path data/face_label_map.pbtxt
-# "fddb"
+# "fddb" or "afw"
 # python test.py --task_type fddb --ckpt_path ckpt/save/wider/frozen_inference_graph.pb
+# python test.py --task_type afw --ckpt_path ckpt/save/wider/frozen_inference_graph.pb
 
 import numpy as np
 import os
@@ -52,9 +53,13 @@ flags.DEFINE_integer('fddb_fold', 7, 'FDDB fold to test')
 flags.DEFINE_string('fddb_root', 'data/datasets/FDDB', 'FDDB root directory')
 flags.DEFINE_string('fddb_output', 'ckpt/save/fddb_result.txt', 'path to output FDDB result file')
 
+# if task type is "afw"
+flags.DEFINE_string('afw_root', 'data/datasets/AFW', 'AFW root directory')
+flags.DEFINE_string('afw_output', 'ckpt/save/afw_result.txt', 'path to output AFW result file')
+
 FLAGS = flags.FLAGS
 
-ALL_TASK_TYPE = {'none', 'draw', 'save', 'fddb'}
+ALL_TASK_TYPE = {'none', 'draw', 'save', 'fddb', 'afw'}
 
 def load_labelmap():
     # Label maps map indices to category names, so that when our convolution network predicts 5, we know that this corresponds to airplane. 
@@ -96,6 +101,10 @@ class Detection:
         return detection_graph
 
     def im_detect(self, image, image_path='', verbose=True):
+        '''detect faces in an image
+        image: NHWC format
+        image_path: required only if verbose is True
+        '''
         start_time = time.time()
         (boxes, scores, classes, num_detections) = self._sess.run(
             [self._boxes_tensor, self._scores_tensor, self._classes_tensor, self._num_detections_tensor],
@@ -103,6 +112,23 @@ class Detection:
         time_elapsed = time.time() - start_time
         if verbose: print '{} time: {:.3f}s'.format(image_path, time_elapsed)
         return boxes, scores, classes, num_detections
+
+    def test_dataset(self, image_index_file, image_dir, output, image_extension='.jpg'):
+        '''batch face detection, write detection result to a result file
+        image_index_file: a file containing image index, one per line
+        image_dir: image directory. Full image path would be os.path.join(image_dir, image_index + image_extension)
+        output: result file to write to
+        '''
+        from utils import result_utils
+        with result_utils.ResultWriter(output, score_thresh=FLAGS.conf_thresh) as result_writer:
+            with open(image_index_file) as f:
+                for line in f:
+                    filename_short = line.strip()
+                    image_path = os.path.join(image_dir, filename_short + image_extension)
+                    image_np, image_np_expanded = read_image_and_preprocess(image_path)
+                    boxes, scores, classes, num_detections = self.im_detect(image_np_expanded, image_path=image_path)
+                    im_height, im_width, _ = image_np.shape
+                    result_writer.write(filename_short, np.squeeze(boxes), np.squeeze(scores), im_width, im_height)
 
 def read_image_and_preprocess(image_path):
     '''read from image_path
@@ -157,17 +183,14 @@ def main(_):
                     Image.fromarray(image_np).save(save_to)
         
         elif FLAGS.task_type == 'fddb':
-            im_list_file = os.path.join(FLAGS.fddb_root, 'FDDB-folds', 'FDDB-fold-{:02d}.txt'.format(FLAGS.fddb_fold))
-            from utils import fddb_utils
-            with fddb_utils.FDDB(FLAGS.fddb_output, score_thresh=FLAGS.conf_thresh) as fddb:
-                with open(im_list_file) as f:
-                    for line in f:
-                        filename_short = line.strip()
-                        image_path = os.path.join(FLAGS.fddb_root, 'originalPics', filename_short + '.jpg')
-                        image_np, image_np_expanded = read_image_and_preprocess(image_path)
-                        boxes, scores, classes, num_detections = detection.im_detect(image_np_expanded, image_path=image_path)
-                        im_height, im_width, _ = image_np.shape
-                        fddb.write(filename_short, np.squeeze(boxes), np.squeeze(scores), im_width, im_height)
+            image_index_file = os.path.join(FLAGS.fddb_root, 'FDDB-folds', 'FDDB-fold-{:02d}.txt'.format(FLAGS.fddb_fold))
+            image_dir = os.path.join(FLAGS.fddb_root, 'originalPics')
+            detection.test_dataset(image_index_file, image_dir, FLAGS.fddb_output)
+
+        elif FLAGS.task_type == 'afw':
+            image_index_file = os.path.join(FLAGS.afw_root, 'test.txt')
+            image_dir = os.path.join(FLAGS.afw_root, 'testimages')
+            detection.test_dataset(image_index_file, image_dir, FLAGS.afw_output)
 
 if __name__ == '__main__':
     tf.app.run()

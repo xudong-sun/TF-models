@@ -1,8 +1,10 @@
 #!/bin/bash
 # 1. generate frozen inference graph from checkpoint
 # 2. run detection on FDDB fold07
-# 3. calculate ROC curves
-# experiments/scripts/evaluate_fddb.sh 0 ssd_mobilenet_v1_wider 251616 ssd_mobilenet_v1_fddb.config
+# 3. calculate FDDB ROC curves
+# 4. run detection on AFW
+# 5. calculate AFW ROC and PR curves
+# Example: experiments/scripts/evaluate.sh 0 ssd_mobilenet_v1_wider 251616 ssd_mobilenet_v1_fddb.config
 
 set -e
 
@@ -31,14 +33,32 @@ python test.py \
  --fddb_root $FDDB_BASE \
  --fddb_output $FDDB_RESULT
 
-# evaluate
-ROC_PREFIX=$FDDB_WORK_DIR/${CKPT_STEP}_
+# evaluate FDDB
+FDDB_REPORT_PREFIX=$FDDB_WORK_DIR/${CKPT_STEP}_
 $FDDB_BASE/evaluation/evaluate \
  -a $FDDB_BASE/FDDB-folds/FDDB-fold-07-ellipseList.txt \
  -d $FDDB_RESULT \
  -f 0 \
  -i $FDDB_BASE/originalPics/ \
  -l $FDDB_BASE/FDDB-folds/FDDB-fold-07.txt \
- -r $ROC_PREFIX \
+ -r $FDDB_REPORT_PREFIX \
  -t -1
+
+# write AFW txt
+AFW_BASE=data/datasets/AFW
+AFW_WORK_DIR=ckpt/afw/$FOLDER
+AFW_RESULT=$AFW_WORK_DIR/result-$CKPT_STEP.txt
+python test.py \
+ --task_type afw \
+ --ckpt_path $INFERENCE_GRAPH \
+ --conf_thresh 0.1 \
+ --afw_root $AFW_BASE \
+ --afw_output $AFW_RESULT
+
+# evaluate AFW
+AFW_REPORT_PREFIX=$AFW_WORK_DIR/${CKPT_STEP}_
+python $AFW_BASE/evaluation/evaluate.py \
+ $AFW_RESULT \
+ $AFW_BASE/annotations.txt \
+ $AFW_REPORT_PREFIX
 
