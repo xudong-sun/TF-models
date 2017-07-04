@@ -7,8 +7,8 @@
 # "draw" or "save"
 # python test.py --task_type draw --ckpt_path ckpt/save/wider/frozen_inference_graph.pb \
 #   --test_images_root test_images --test_images test1.jpg,test3.jpg --labels_path data/face_label_map.pbtxt
-# python test.py --task_type=save --ckpt_path ckpt/save/wider/frozen_inference_graph/pb \
-#   --image_list /data/SOME_IMAGE_LIST.txt --labels_path data/face_label_map.pbtxt
+# python test.py --task_type=save --ckpt_path ckpt/save/wider/frozen_inference_graph.pb \
+#   --image_list /data/SOME_IMAGE_LIST.txt --labels_path data/face_label_map.pbtxt --save_output OUTPUT_DIR
 # "fddb" or "afw"
 # python test.py --task_type fddb --ckpt_path ckpt/save/wider/frozen_inference_graph.pb
 # python test.py --task_type afw --ckpt_path ckpt/save/wider/frozen_inference_graph.pb
@@ -17,11 +17,8 @@ import numpy as np
 import os
 import sys
 import time
+import cv2
 import tensorflow as tf
-
-from collections import defaultdict
-from io import StringIO
-from PIL import Image
 
 from utils import label_map_util
 
@@ -134,16 +131,8 @@ def read_image_and_preprocess(image_path):
     '''read from image_path
     returns: image_np [H,W,C], image_np_expanded: [1,H,W,C]
     '''
-    image = Image.open(image_path)
-    # the array based representation of the image will be used later in order to prepare the
-    # result image with boxes and labels on it.
-    im_width, im_height = image.size
-    try:
-        image_np = np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
-    except: # single-channel image
-        image_np = np.array(image.getdata()).reshape((im_height, im_width)).astype(np.uint8)
-        image_np = np.tile(image_np[:, :, np.newaxis], (1, 1, 3))
-    # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+    image_np = cv2.imread(image_path)
+    image_np = image_np[:, :, ::-1]
     image_np_expanded = np.expand_dims(image_np, axis=0)
     return image_np, image_np_expanded
 

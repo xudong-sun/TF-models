@@ -13,7 +13,7 @@ FOLDER=$2
 CKPT_STEP=$3
 PIPELINE_FILE=$4
 
-export CUDA_VISIBLE_DEVICES=$1
+export CUDA_VISIBLE_DEVICES=$GPU_ID
 
 # export inference graph
 INFERENCE_GRAPH=ckpt/save/$FOLDER/frozen_inference_graph-$CKPT_STEP.pb
@@ -51,7 +51,7 @@ AFW_RESULT=$AFW_WORK_DIR/result-$CKPT_STEP.txt
 python test.py \
  --task_type afw \
  --ckpt_path $INFERENCE_GRAPH \
- --conf_thresh 0.1 \
+ --conf_thresh 0.01 \
  --afw_root $AFW_BASE \
  --afw_output $AFW_RESULT
 
