@@ -62,7 +62,7 @@ def get_target(targets, folder):
         retval = targets[folder], save_every
     else:
         logger.info('Found new train directory: {}'.format(folder))
-        with open(moniter_file, 'w') as f: f.write(str(config['default_save_interval']]))
+        with open(moniter_file, 'w') as f: f.write(str(config['default_save_interval']))
         retval = 0, config['default_save_interval']
     return retval
 
