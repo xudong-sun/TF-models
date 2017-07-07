@@ -30,7 +30,7 @@ LATEST_CKPT_PATTERN = re.compile(PATTERN)
 logger = simple_logger()
 
 def read_config():
-    config_file = os.path.join(WORK_DIR, 'monitor.pkl')
+    config_file = os.path.join(WORK_DIR, 'monitor.cfg')
     if os.path.isfile(config_file):
         with open(config_file) as f: config = yaml.load(f)
     else: config = {}
