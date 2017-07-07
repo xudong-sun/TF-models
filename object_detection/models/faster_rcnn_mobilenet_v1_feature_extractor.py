@@ -31,7 +31,7 @@ class FasterRCNNMobileNetV1FeatureExtractor(
     if first_stage_features_stride != 8 and first_stage_features_stride != 16:
       raise ValueError('`first_stage_features_stride` must be 8 or 16.')
     self._depth_multiplier = depth_multiplier
-    super(FasterRCNNResnetV1FeatureExtractor, self).__init__(
+    super(FasterRCNNMobileNetV1FeatureExtractor, self).__init__(
         is_training, first_stage_features_stride, reuse_weights, weight_decay)
 
   def preprocess(self, resized_inputs):
