@@ -4,6 +4,7 @@
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from nets import mobilenet_v1
 slim = tf.contrib.slim
 
 class FasterRCNNMobileNetV1FeatureExtractor(
@@ -76,14 +77,17 @@ class FasterRCNNMobileNetV1FeatureExtractor(
         ['image size must at least be 33 in both height and width.'])
 
     with tf.control_dependencies([shape_assert]):
-      with tf.variable_scope('MobilenetV1', 
-                             reuse=self._reuse_weights) as scope:
-        rpn_feature_map, _ = mobilenet_v1.mobilenet_v1_base(
-              preprocessed_inputs,
-              final_endpoint='Conv2d_13_pointwise',
-              min_depth=self._first_stage_features_stride,
-              depth_multiplier=self._depth_multiplier,
-              scope=scope)
+      with slim.arg_scope(mobilenet_v1.mobilenet_v1_arg_scope(
+                          weight_decay=self._weight_decay)):
+        with slim.arg_scope([slim.batch_norm], is_training=False):
+          with tf.variable_scope('MobilenetV1', 
+                                 reuse=self._reuse_weights) as scope:
+            rpn_feature_map, _ = mobilenet_v1.mobilenet_v1_base(
+                  preprocessed_inputs,
+                  final_endpoint='Conv2d_13_pointwise',
+                  min_depth=self._first_stage_features_stride,
+                  depth_multiplier=self._depth_multiplier,
+                  scope=scope)
     return rpn_feature_map
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
