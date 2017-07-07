@@ -102,10 +102,10 @@ def dict_to_tf_example(data,
 
     difficult_obj.append(int(difficult))
 
-    xmin.append(float(obj['bndbox']['xmin']) / width)
-    ymin.append(float(obj['bndbox']['ymin']) / height)
-    xmax.append(float(obj['bndbox']['xmax']) / width)
-    ymax.append(float(obj['bndbox']['ymax']) / height)
+    xmin.append(min(max(float(obj['bndbox']['xmin']) / width, 0.), 1.))
+    ymin.append(min(max(float(obj['bndbox']['ymin']) / height, 0.), 1.))
+    xmax.append(min(max(float(obj['bndbox']['xmax']) / width, 0.), 1.))
+    ymax.append(min(max(float(obj['bndbox']['ymax']) / height, 0.), 1.))
     classes_text.append(obj['name'])
     classes.append(int(obj['name']))
 
